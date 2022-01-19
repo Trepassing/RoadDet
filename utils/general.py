@@ -753,6 +753,12 @@ def get_roi_res(dets, height, ratio):
     return res
 
 def get_roi_res_torch(dets, height, ratio, endind, xyxy=True):
+    '''
+    remove bbox of all classes excepted chepai and renlian out of roi range.
+    height: the height of oringinal image
+    ratio: the ratio of roi height
+    endind: chepai and renlian ind
+    '''
     endind = endind - 1
     if not xyxy:
         detsn = xywh2xyxy(dets[ :, 1:5 ])
