@@ -427,9 +427,9 @@ def resample_segments(segments, n=1000):
         segments[i] = np.concatenate([np.interp(x, xp, s[:, i]) for i in range(2)]).reshape(2, -1).T  # segment xy
     return segments
 
-
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     # Rescale coords (xyxy) from img1_shape to img0_shape
+    print(img0_shape, img1_shape)
     if ratio_pad is None:  # calculate from img0_shape
         gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # gain  = old / new
         pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
@@ -443,13 +443,33 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     clip_coords(coords, img0_shape)
     return coords
 
-
 def clip_coords(boxes, img_shape):
     # Clip bounding xyxy bounding boxes to image shape (height, width)
     boxes[:, 0].clamp_(0, img_shape[1])  # x1
     boxes[:, 1].clamp_(0, img_shape[0])  # y1
     boxes[:, 2].clamp_(0, img_shape[1])  # x2
     boxes[:, 3].clamp_(0, img_shape[0])  # y2
+
+def scale_coords_2d(img1_shape, coords, img0_shape, ratio_pad=None):
+    # Rescale coords from img1_shape to img0_shape; coords:[[[x,y]],[[x,y]],....]
+    if ratio_pad is None:  # calculate from img0_shape
+        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # gain  = old / new
+        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+    coords[:, :, 0] -= pad[0]  # x padding
+    coords[:, :, 1] -= pad[1]  # y padding
+    coords[:, :2] /= gain
+    new_coords = clip_coords_2d(coords, img0_shape)
+    return new_coords
+
+def clip_coords_2d(boxes, img_shape):
+    # Clip bounding xy bounding boxes to image shape (height, width)
+    new_boxes = boxes.copy()
+    new_boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, img_shape[1])
+    new_boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, img_shape[0])
+    return new_boxes
 
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=1e-7):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
@@ -747,9 +767,23 @@ def remove_inside_box(dets, classes=[0, 1, 2, 3, 4]):
                 boxes = np.delete(boxes, 0, axis = 0)
     return out[1:]
 
-def get_roi_res(dets, height, ratio):
-    inds = np.where(dets[:, 3]>height*(1-ratio))[0]
-    res = dets[inds]
+def get_roi_res_seg(dets, RoI, endind):
+    '''
+    remove bbox of all classes excepted chepai and renlian out of roi range.
+    RoI is drivable area segmented by deeplabV3
+    '''
+    dets1 = dets[torch.where(dets[:, 5] > endind)[0]]
+    dets2 = dets[torch.where(dets[:, 5] <= endind)[0]]
+
+    inds = []
+    for i in range(len(dets2)):
+        det = dets2[i]
+        bbox_center = (int((det[0]+det[2])/2), int((det[1]+det[3])/2))
+        flag = cv2.pointPolygonTest(RoI, bbox_center, False)
+        if flag == 1:
+            inds.append(i)
+    
+    res = torch.cat((dets2[inds], dets1), 0)
     return res
 
 def get_roi_res_torch(dets, height, ratio, endind, xyxy=True):

@@ -7,8 +7,8 @@
 
 # train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
 train: [ /mnt/yfs/zhinanzhang/data/data/roadV2/liqing/train, /mnt/yfs/zhinanzhang/data/data/roadV2/liqing/test ] # 128 images
-val: /mnt/yfs/zhinanzhang/data/data/roadV2/liqing/val
-# test: /mnt/yfs/zhinanzhang/data/data/roadV2/liqing/test
+val: /mnt/yfs/zhinanzhang/data/data/roadV2/500liqing/val
+test: /mnt/yfs/zhinanzhang/data/data/roadV2/500liqing/test
 # number of classes
 nc: 7
 
